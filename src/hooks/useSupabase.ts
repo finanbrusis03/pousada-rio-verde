@@ -83,38 +83,7 @@ export const useRooms = () => {
         throw new Error('ID do quarto não fornecido');
       }
 
-      // Prepara os dados para atualização
-      const roomToUpdate: any = {
-        ...updates,
-        updated_at: new Date().toISOString(),
-      };
-
-      // Garante que os campos numéricos sejam números
-      if (updates.price !== undefined) roomToUpdate.price = Number(updates.price) || 0;
-      if (updates.capacity !== undefined) roomToUpdate.capacity = Number(updates.capacity) || 1;
-      if (updates.min_nights !== undefined) roomToUpdate.min_nights = Number(updates.min_nights) || 1;
-
-      // Garante que os arrays sejam arrays
-      if (updates.images !== undefined) {
-        roomToUpdate.images = Array.isArray(updates.images) ? updates.images : [];
-      }
-      if (updates.amenities !== undefined) {
-        roomToUpdate.amenities = Array.isArray(updates.amenities) ? updates.amenities : [];
-      }
-      if (updates.features !== undefined) {
-        roomToUpdate.features = Array.isArray(updates.features) ? updates.features : [];
-      }
-
-      // Remove campos undefined
-      Object.keys(roomToUpdate).forEach(key => {
-        if (roomToUpdate[key] === undefined) {
-          delete roomToUpdate[key];
-        }
-      });
-
-      console.log('Enviando atualização para o Supabase:', roomToUpdate);
-
-      // Primeiro, verifica se o quarto existe
+      // Primeiro, obtém o quarto existente
       const { data: existingRoom, error: fetchError } = await supabase
         .from('rooms')
         .select('*')
@@ -125,6 +94,31 @@ export const useRooms = () => {
         console.error('Quarto não encontrado:', id, fetchError);
         throw new Error('Quarto não encontrado');
       }
+
+      // Prepara os dados para atualização, mantendo os valores existentes para campos não fornecidos
+      const roomToUpdate: any = {
+        name: updates.name ?? existingRoom.name,
+        description: updates.description ?? existingRoom.description,
+        capacity: updates.capacity !== undefined ? Number(updates.capacity) : existingRoom.capacity,
+        price: updates.price !== undefined ? Number(updates.price) : existingRoom.price,
+        size: updates.size ?? existingRoom.size,
+        beds: updates.beds ?? existingRoom.beds,
+        status: updates.status ?? existingRoom.status,
+        min_nights: updates.min_nights !== undefined ? Number(updates.min_nights) : existingRoom.min_nights,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Trata os arrays separadamente para garantir que sejam sempre arrays
+      roomToUpdate.images = Array.isArray(updates.images) ? updates.images : 
+                           (Array.isArray(existingRoom.images) ? existingRoom.images : []);
+      
+      roomToUpdate.amenities = Array.isArray(updates.amenities) ? updates.amenities : 
+                             (Array.isArray(existingRoom.amenities) ? existingRoom.amenities : []);
+      
+      roomToUpdate.features = Array.isArray(updates.features) ? updates.features : 
+                            (Array.isArray(existingRoom.features) ? existingRoom.features : []);
+
+      console.log('Dados que serão enviados para atualização:', JSON.stringify(roomToUpdate, null, 2));
 
       // Faz a atualização
       const { data, error } = await supabase
