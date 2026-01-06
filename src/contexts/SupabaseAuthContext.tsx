@@ -35,14 +35,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           setSupabaseUser(session.user)
           
-          // Verificar se é admin
-          const isAdminUser = session.user.email === 'admin@rioverde.com'
+          // Obter a role do usuário dos metadados ou da coluna role
+          const userRole = session.user.role === 'admin' || 
+                         session.user.user_metadata?.role === 'admin' ||
+                         session.user.app_metadata?.role === 'admin' ? 'admin' : 'client';
           
           setUser({
             id: session.user.id,
             email: session.user.email || '',
             name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
-            role: isAdminUser ? 'admin' : 'client'
+            role: userRole
           })
         }
       } catch (error) {
@@ -91,10 +93,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
 
-      // Verifica se é admin (se necessário)
-      if (role === 'admin' && email.toLowerCase() !== 'admin@rioverde.com') {
+      // Verifica a role do usuário autenticado
+      const user = data.user;
+      const isAdmin = user.role === 'admin' || 
+                     user.user_metadata?.role === 'admin' ||
+                     user.app_metadata?.role === 'admin';
+
+      // Se tentando acessar como admin, verifica se tem permissão
+      if (role === 'admin' && !isAdmin) {
         await supabase.auth.signOut();
-        return { success: false, error: 'Acesso restrito a administradores' };
+        return { 
+          success: false, 
+          error: 'Acesso restrito a administradores' 
+        };
       }
 
       return { success: true };
