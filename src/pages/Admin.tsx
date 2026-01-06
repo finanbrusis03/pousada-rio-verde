@@ -70,13 +70,9 @@ const Admin = () => {
   const handleSaveRoom = async (roomData: any) => {
     try {
       if (editingRoom) {
-        console.log('Editing room with ID:', editingRoom.id)
-        // Garante que o ID seja tratado como número
-        const roomId = Number(editingRoom.id);
-        if (isNaN(roomId)) {
-          throw new Error('ID do quarto inválido');
-        }
-        await roomsData.updateRoom(roomId, roomData);
+        console.log('Editing room with ID:', editingRoom.id);
+        // Usa o ID como está (string UUID)
+        await roomsData.updateRoom(editingRoom.id, roomData);
         toast({
           title: "Quarto atualizado",
           description: "O quarto foi atualizado com sucesso.",
@@ -101,16 +97,12 @@ const Admin = () => {
     }
   };
 
-  const handleDeleteRoom = async (roomId: number | string) => {
+  const handleDeleteRoom = async (roomId: string) => {
     if (confirm('Tem certeza que deseja excluir este quarto?')) {
       try {
         console.log('Deleting room with ID:', roomId);
-        // Garante que o ID seja tratado como número
-        const id = typeof roomId === 'string' ? parseInt(roomId, 10) : roomId;
-        if (isNaN(id)) {
-          throw new Error('ID do quarto inválido');
-        }
-        await roomsData.deleteRoom(id);
+        // Usa o ID como está (string UUID)
+        await roomsData.deleteRoom(roomId);
         toast({
           title: "Quarto excluído",
           description: "O quarto foi excluído com sucesso.",
@@ -415,7 +407,7 @@ const Admin = () => {
                                   <Button variant="ghost" size="icon" className="text-sand-300 hover:text-sand-50 hover:bg-sand-100/10" onClick={() => handleEditRoom(room)}>
                                     <Edit className="w-4 h-4" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="text-sand-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => handleDeleteRoom(room.id)}>
+                                  <Button variant="ghost" size="icon" className="text-sand-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => handleDeleteRoom(String(room.id))}>
                                     <Trash2 className="w-4 h-4" />
                                   </Button>
                                 </div>

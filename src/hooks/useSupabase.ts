@@ -73,7 +73,7 @@ export const useRooms = () => {
     }
   }
 
-  const updateRoom = async (id: number, updates: Partial<Room>) => {
+  const updateRoom = async (id: string | number, updates: Partial<Room>) => {
     try {
       console.log('Updating room:', id, updates)
       
@@ -140,7 +140,7 @@ export const useRooms = () => {
     }
   }
 
-  const deleteRoom = async (id: number) => {
+  const deleteRoom = async (id: string | number) => {
     try {
       // Primeiro, obtém o quarto para deletar as imagens
       const { data: room, error: fetchError } = await supabase
