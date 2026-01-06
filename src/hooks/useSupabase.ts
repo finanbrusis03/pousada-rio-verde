@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase, Database } from '@/lib/supabase'
 import type { Room, Reservation, Client, Payment } from '@/lib/supabase'
+import { uploadImage, deleteImage } from '@/lib/storage'
 
 export const useRooms = () => {
   const [rooms, setRooms] = useState<Room[]>([])
@@ -27,76 +28,127 @@ export const useRooms = () => {
     }
   }
 
-  const createRoom = async (room: Omit<Room, 'id' | 'created_at' | 'updated_at'>) => {
+  const createRoom = async (roomData: Omit<Room, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Garante que as imagens sejam um array vazio se não fornecidas
+      const roomToCreate = {
+        ...roomData,
+        images: Array.isArray(roomData.images) ? roomData.images : [],
+        status: roomData.status || 'available',
+        amenities: Array.isArray(roomData.amenities) ? roomData.amenities : [],
+        min_nights: roomData.min_nights || 1
+      }
+
       const { data, error } = await supabase
         .from('rooms')
-        .insert(room)
+        .insert(roomToCreate)
         .select()
         .single()
 
-      if (error) {
-        console.error('Error creating room:', error)
-        throw error
-      }
+      if (error) throw error
 
       await fetchRooms()
       return data
-    } catch (err) {
-      console.error('Error creating room:', err)
-      throw err
+    } catch (error) {
+      console.error('Error creating room:', error)
+      throw new Error('Erro ao criar o quarto. Por favor, tente novamente.')
     }
   }
 
-  const updateRoom = async (id: string, room: Partial<Room>) => {
+  const updateRoom = async (id: string, updates: Partial<Room>) => {
     try {
-      console.log('Updating room:', id, room)
+      console.log('Updating room:', id, updates)
       
-      const { data, error } = await supabase
+      // Verifica se o quarto existe antes de atualizar
+      const { data: existingRoom, error: fetchError } = await supabase
         .from('rooms')
-        .update(room)
+        .select('*')
         .eq('id', id)
-        .select()
+        .single()
 
-      if (error) {
-        console.error('Error updating room:', error)
-        throw error
-      }
-
-      if (!data || data.length === 0) {
-        console.error('No room found with id:', id)
+      if (fetchError || !existingRoom) {
+        console.error('Room not found:', id, fetchError)
         throw new Error('Quarto não encontrado')
       }
 
+      // Atualiza apenas os campos fornecidos
+      const roomToUpdate = { ...updates, updated_at: new Date().toISOString() }
+
+      const { data, error } = await supabase
+        .from('rooms')
+        .update(roomToUpdate)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      if (!data) throw new Error('Nenhum dado retornado ao atualizar o quarto')
+
       await fetchRooms()
-      return data[0]
-    } catch (err) {
-      console.error('Error updating room:', err)
-      throw err
+      return data
+    } catch (error) {
+      console.error('Error updating room:', error)
+      throw new Error(`Erro ao atualizar o quarto: ${error.message}`)
     }
   }
 
   const deleteRoom = async (id: string) => {
     try {
+      // Primeiro, obtém o quarto para deletar as imagens
+      const { data: room, error: fetchError } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      // Deleta as imagens do storage
+      if (room?.images?.length) {
+        await Promise.all(
+          room.images.map(async (imgUrl: string) => {
+            if (imgUrl.includes('supabase.co/storage/v1/object/public/images/')) {
+              await deleteImage(imgUrl).catch(console.error)
+            }
+          })
+        )
+      }
+
+      // Deleta o quarto do banco de dados
       const { error } = await supabase
         .from('rooms')
         .delete()
         .eq('id', id)
 
-      if (error) {
-        console.error('Error deleting room:', error)
-        throw error
-      }
+      if (error) throw error
 
       await fetchRooms()
       return true
-    } catch (err) {
-      console.error('Error deleting room:', err)
-      throw err
+    } catch (error) {
+      console.error('Error deleting room:', error)
+      throw new Error('Erro ao excluir o quarto. Por favor, tente novamente.')
     }
   }
 
-  const getRoom = async (id: number) => {
+  // Função auxiliar para processar imagens de um quarto
+  const processRoomImages = (room: Room) => {
+    // Garante que images seja sempre um array
+    const images = Array.isArray(room.images) ? room.images : []
+    
+    // Filtra apenas URLs válidas
+    const validImages = images.filter(img => 
+      img && (typeof img === 'string') && 
+      (img.startsWith('http') || img.startsWith('blob:') || img.startsWith('/'))
+    )
+    
+    return {
+      ...room,
+      images: validImages,
+      amenities: Array.isArray(room.amenities) ? room.amenities : []
+    }
+  }
+
+  const getRoom = async (id: string) => {
     const { data, error } = await supabase
       .from('rooms')
       .select('*')
@@ -105,10 +157,14 @@ export const useRooms = () => {
 
     if (error) {
       console.error('Error fetching room:', error)
-      return null
+      throw new Error('Erro ao buscar o quarto')
     }
 
-    return data
+    if (!data) {
+      throw new Error('Quarto não encontrado')
+    }
+
+    return processRoomImages(data)
   }
 
   const checkAvailability = async (
@@ -139,15 +195,19 @@ export const useRooms = () => {
     return !data?.length && !blockedDates?.length
   }
 
+  // Processa os quartos para garantir que as imagens estejam corretas
+  const processedRooms = rooms.map(room => processRoomImages(room))
+
   return {
-    rooms,
+    rooms: processedRooms,
     loading,
     fetchRooms,
     getRoom,
-    checkAvailability,
     createRoom,
     updateRoom,
     deleteRoom,
+    uploadImage, // Expõe a função de upload para ser usada nos componentes
+    deleteImage  // Expõe a função de deletar imagem
   }
 }
 
