@@ -90,35 +90,53 @@ export const useRooms = () => {
       }
 
       // Prepara os dados para atualização
-      const roomToUpdate = {
+      const roomToUpdate: Partial<Room> = {
         ...updates,
         updated_at: new Date().toISOString(),
         // Garante que os arrays estejam corretos
-        images: Array.isArray(updates.images) ? updates.images : existingRoom.images,
-        amenities: Array.isArray(updates.amenities) ? updates.amenities : existingRoom.amenities,
-        features: Array.isArray(updates.features) ? updates.features : existingRoom.features,
+        images: Array.isArray(updates.images) ? updates.images : (existingRoom.images || []),
+        amenities: Array.isArray(updates.amenities) ? updates.amenities : (existingRoom.amenities || []),
+        features: Array.isArray(updates.features) ? updates.features : (existingRoom.features || []),
         // Converte números para garantir o tipo correto
         price: updates.price !== undefined ? Number(updates.price) : existingRoom.price,
         capacity: updates.capacity !== undefined ? Number(updates.capacity) : existingRoom.capacity,
-        min_nights: updates.min_nights !== undefined ? Number(updates.min_nights) : existingRoom.min_nights
-      }
+        min_nights: updates.min_nights !== undefined ? Number(updates.min_nights) : existingRoom.min_nights,
+        status: updates.status || existingRoom.status || 'available'
+      };
+
+      // Remove campos undefined para evitar erros no Supabase
+      Object.keys(roomToUpdate).forEach(key => {
+        if (roomToUpdate[key as keyof Room] === undefined) {
+          delete roomToUpdate[key as keyof Room];
+        }
+      });
+
+      console.log('Sending update to Supabase:', roomToUpdate);
 
       const { data, error } = await supabase
         .from('rooms')
         .update(roomToUpdate)
         .eq('id', id)
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
-      if (!data) throw new Error('Nenhum dado retornado ao atualizar o quarto')
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw error;
+      }
 
+      if (!data) {
+        throw new Error('Nenhum dado retornado ao atualizar o quarto');
+      }
+
+      console.log('Room updated successfully:', data);
+      
       // Atualiza a lista de quartos
-      await fetchRooms()
-      return data
+      await fetchRooms();
+      return data;
     } catch (error) {
-      console.error('Error updating room:', error)
-      throw new Error(`Erro ao atualizar o quarto: ${error.message}`)
+      console.error('Error updating room:', error);
+      throw new Error(`Erro ao atualizar o quarto: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
 
