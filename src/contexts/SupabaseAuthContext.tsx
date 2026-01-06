@@ -154,7 +154,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const isAdmin = user?.role === 'admin'
+  // Verifica se o usuário é admin de várias formas possíveis
+  const isAdmin = Boolean(
+    user?.role === 'admin' ||
+    user?.email === 'admin@rioverde.com' ||
+    supabaseUser?.user_metadata?.role === 'admin' ||
+    supabaseUser?.app_metadata?.role === 'admin'
+  )
 
   const value: AuthContextType = {
     user,

@@ -42,9 +42,21 @@ const Admin = () => {
   const [editingRoom, setEditingRoom] = useState<any>(null);
 
   useEffect(() => {
-    // Verificar se usuário está autenticado e é admin
-    if (!user || !isAdmin) {
+    console.log('Verificando autenticação:', { user, isAdmin });
+    
+    if (!user) {
+      console.log('Usuário não autenticado, redirecionando para login...');
       navigate("/login", { state: { admin: true } });
+    } else if (!isAdmin) {
+      console.log('Usuário não é admin, redirecionando para login...');
+      console.log('Detalhes do usuário:', {
+        email: user.email,
+        role: user.role,
+        isAdmin: user.role === 'admin'
+      });
+      navigate("/login", { state: { admin: true } });
+    } else {
+      console.log('Usuário autenticado como admin:', user.email);
     }
   }, [user, isAdmin, navigate]);
 

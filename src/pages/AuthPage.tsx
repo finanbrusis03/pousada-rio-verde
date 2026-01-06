@@ -39,7 +39,12 @@ export default function AuthPage() {
         const result = await signIn(email, password, 'admin')
         if (result.success) {
           toast.success('Login administrativo realizado com sucesso!')
-          navigate('/admin')
+          // Pequeno atraso para garantir que o estado seja atualizado
+          setTimeout(() => {
+            navigate('/admin')
+            // Força o recarregamento da página para garantir que o estado seja atualizado
+            window.location.reload()
+          }, 100)
         } else {
           toast.error(result.error || 'Credenciais administrativas incorretas')
         }
