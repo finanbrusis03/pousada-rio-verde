@@ -44,20 +44,38 @@ const Admin = () => {
   useEffect(() => {
     console.log('Verificando autenticação:', { user, isAdmin });
     
+    // Se não há usuário, redireciona para o login
     if (!user) {
       console.log('Usuário não autenticado, redirecionando para login...');
-      navigate("/login", { state: { admin: true } });
-    } else if (!isAdmin) {
+      // Usa replace em vez de navigate para evitar adicionar ao histórico de navegação
+      navigate("/login", { 
+        state: { admin: true },
+        replace: true // Importante para evitar loops
+      });
+      return;
+    }
+    
+    // Se o usuário existe mas não é admin
+    if (!isAdmin) {
       console.log('Usuário não é admin, redirecionando para login...');
       console.log('Detalhes do usuário:', {
         email: user.email,
         role: user.role,
         isAdmin: user.role === 'admin'
       });
-      navigate("/login", { state: { admin: true } });
-    } else {
-      console.log('Usuário autenticado como admin:', user.email);
+      
+      // Faz logout para limpar qualquer estado inválido
+      signOut().then(() => {
+        navigate("/login", { 
+          state: { admin: true },
+          replace: true
+        });
+      });
+      return;
     }
+    
+    // Se chegou aqui, o usuário está autenticado e é admin
+    console.log('Usuário autenticado como admin:', user.email);
   }, [user, isAdmin, navigate]);
 
   const handleLogout = async () => {

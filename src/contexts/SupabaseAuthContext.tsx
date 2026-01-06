@@ -98,11 +98,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role: isAdmin ? 'admin' : 'client'
           })
           
-          // Se acabou de fazer login, recarrega a página para garantir que tudo seja atualizado
-          if (event === 'SIGNED_IN') {
-            console.log('Login detectado, recarregando a página...')
-            setTimeout(() => window.location.reload(), 100)
-          }
+          // Não recarregamos mais a página aqui para evitar loops
+          // O redirecionamento é tratado no componente de login
         } else {
           console.log('Usuário não autenticado')
           setUser(null)

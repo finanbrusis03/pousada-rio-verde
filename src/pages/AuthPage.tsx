@@ -39,12 +39,9 @@ export default function AuthPage() {
         const result = await signIn(email, password, 'admin')
         if (result.success) {
           toast.success('Login administrativo realizado com sucesso!')
-          // Pequeno atraso para garantir que o estado seja atualizado
-          setTimeout(() => {
-            navigate('/admin')
-            // Força o recarregamento da página para garantir que o estado seja atualizado
-            window.location.reload()
-          }, 100)
+          // Redireciona diretamente sem recarregar a página
+          // O listener de autenticação no SupabaseAuthContext irá lidar com o redirecionamento
+          navigate('/admin', { replace: true })
         } else {
           toast.error(result.error || 'Credenciais administrativas incorretas')
         }
