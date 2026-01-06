@@ -75,25 +75,35 @@ export const useRooms = () => {
 
   const updateRoom = async (id: string, updates: Partial<Omit<Room, 'id' | 'created_at' | 'updated_at'>>) => {
     try {
-      // Verifica se o usuário está autenticado
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        console.error('Erro de autenticação:', sessionError);
-        throw new Error('Usuário não autenticado. Por favor, faça login novamente.');
-      }
-      
-      // Verifica se o token JWT está presente
-      const token = session.access_token;
-      if (!token) {
-        throw new Error('Token de autenticação não encontrado');
-      }
-      
-      console.log('Usuário autenticado:', session.user?.email);
+      console.log('Iniciando atualização do quarto ID:', id);
+      console.log('Dados recebidos para atualização:', updates);
       
       // Verifica se o ID é válido
       if (!id) {
         throw new Error('ID do quarto não fornecido');
+      }
+      
+      // Verifica se o usuário está autenticado
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Erro ao obter sessão:', sessionError);
+        throw new Error('Erro ao verificar autenticação. Por favor, tente novamente.');
+      }
+      
+      if (!session) {
+        console.error('Nenhuma sessão ativa encontrada');
+        throw new Error('Sessão expirada. Por favor, faça login novamente.');
+      }
+      
+      console.log('Usuário autenticado:', session.user?.email);
+      
+      // Força a atualização do token se necessário
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('Erro ao obter usuário:', userError);
+        throw new Error('Não foi possível verificar as permissões do usuário.');
       }
       console.log('Iniciando atualização do quarto ID:', id);
       console.log('Dados recebidos para atualização:', updates);

@@ -13,7 +13,14 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    flowType: 'pkce',  // Usar PKCE para melhor segurança
+    debug: true        // Habilitar logs de depuração
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'pousada-rio-verde/1.0.0'
+    }
   }
 })
 
