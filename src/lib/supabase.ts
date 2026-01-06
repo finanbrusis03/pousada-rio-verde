@@ -14,15 +14,23 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',  // Usar PKCE para melhor segurança
-    debug: true        // Habilitar logs de depuração
+    flowType: 'pkce',
+    debug: true,
+    storageKey: 'pousada-rio-verde-auth-token',
+    storage: window.localStorage
   },
   global: {
     headers: {
-      'X-Client-Info': 'pousada-rio-verde/1.0.0'
-    }
+      'X-Client-Info': 'pousada-rio-verde/1.0.0',
+      'apikey': supabaseAnonKey
+    },
   }
-})
+});
+
+// Adiciona um listener para mudanças de autenticação
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('Auth state changed:', event, session);
+});
 
 // Database types
 export interface Database {

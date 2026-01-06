@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lock, Mail, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
@@ -21,24 +22,39 @@ const AdminLogin = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulação de login - será substituído por autenticação real com Lovable Cloud
-    setTimeout(() => {
-      if (email === "admin@rioverde.com" && password === "admin123") {
-        localStorage.setItem("adminAuth", "true");
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Bem-vindo ao painel administrativo.",
-        });
-        navigate("/admin");
-      } else {
-        toast({
-          title: "Erro no login",
-          description: "E-mail ou senha incorretos.",
-          variant: "destructive",
-        });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password: password,
+      });
+
+      if (error) {
+        throw error;
       }
+
+      if (data.user?.email !== 'admin@rioverde.com') {
+        // Se não for o admin, faz logout
+        await supabase.auth.signOut();
+        throw new Error('Acesso não autorizado');
+      }
+
+      toast({
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo ao painel administrativo.",
+      });
+      
+      // Redireciona para a página de admin após o login
+      navigate("/admin");
+    } catch (error) {
+      console.error('Erro no login:', error);
+      toast({
+        title: "Erro no login",
+        description: error instanceof Error ? error.message : "E-mail ou senha incorretos.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (

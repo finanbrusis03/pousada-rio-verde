@@ -78,33 +78,33 @@ export const useRooms = () => {
       console.log('Iniciando atualização do quarto ID:', id);
       console.log('Dados recebidos para atualização:', updates);
       
-      // Verifica se o ID é válido
       if (!id) {
         throw new Error('ID do quarto não fornecido');
       }
-      
-      // Verifica se o usuário está autenticado
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error('Erro ao obter sessão:', sessionError);
-        throw new Error('Erro ao verificar autenticação. Por favor, tente novamente.');
-      }
+
+      // Obtém a sessão atual
+      const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         console.error('Nenhuma sessão ativa encontrada');
-        throw new Error('Sessão expirada. Por favor, faça login novamente.');
+        // Força o refresh da sessão
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError || !refreshedSession) {
+          console.error('Erro ao atualizar a sessão:', refreshError);
+          throw new Error('Sessão expirada. Por favor, faça login novamente.');
+        }
       }
-      
-      console.log('Usuário autenticado:', session.user?.email);
-      
-      // Força a atualização do token se necessário
+
+      // Verifica se o usuário está autenticado
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
-        console.error('Erro ao obter usuário:', userError);
-        throw new Error('Não foi possível verificar as permissões do usuário.');
+        console.error('Erro ao verificar autenticação:', userError);
+        throw new Error('Não foi possível verificar sua autenticação. Por favor, faça login novamente.');
       }
+
+      console.log('Usuário autenticado:', user.email);
       console.log('Iniciando atualização do quarto ID:', id);
       console.log('Dados recebidos para atualização:', updates);
       
