@@ -14,7 +14,7 @@ import Policies from "@/pages/Policies";
 import Booking from "@/pages/Booking";
 import AuthPage from "@/pages/AuthPage";
 import ClientArea from "@/pages/ClientArea";
-import Login from "@/pages/Login";
+import AdminLogin from "@/pages/AdminLogin";
 import Admin from "@/pages/Admin";
 import { Layout } from "@/components/layout/Layout";
 import NotFound from "@/pages/NotFound";
@@ -52,7 +52,7 @@ function App() {
                 {/* Autenticação */}
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/area-do-cliente" element={<ClientArea />} />
-                <Route path="/login" element={<Login />} />
+                <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<Admin />} />
                 
                 {/* Áreas Protegidas */}

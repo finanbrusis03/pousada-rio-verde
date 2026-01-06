@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -10,15 +10,13 @@ import { Lock, Mail, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 
-const Login = () => {
+const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
-  const from = location.state?.from?.pathname || "/admin";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +32,8 @@ const Login = () => {
         throw error;
       }
 
-      // Verifica se é o admin
       if (data.user?.email !== 'admin@rioverde.com') {
+        // Se não for o admin, faz logout
         await supabase.auth.signOut();
         throw new Error('Acesso não autorizado');
       }
@@ -45,8 +43,8 @@ const Login = () => {
         description: "Bem-vindo ao painel administrativo.",
       });
       
-      // Redireciona para a página de origem ou para /admin
-      navigate(from, { replace: true });
+      // Redireciona para a página de admin após o login
+      navigate("/admin");
     } catch (error) {
       console.error('Erro no login:', error);
       toast({
@@ -69,68 +67,72 @@ const Login = () => {
             transition={{ duration: 0.6 }}
             className="max-w-md mx-auto"
           >
-            <Card className="shadow-lg">
-              <CardHeader className="text-center space-y-1">
-                <div className="flex justify-center mb-4">
-                  <ShieldCheck className="h-12 w-12 text-primary" />
+            <Card className="border-primary/20 shadow-elevated">
+              <CardHeader className="text-center space-y-4">
+                <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <ShieldCheck className="w-8 h-8 text-primary" />
                 </div>
-                <CardTitle className="text-2xl font-bold">Acesso Administrativo</CardTitle>
+                <CardTitle className="font-display text-2xl">
+                  Área Administrativa
+                </CardTitle>
                 <CardDescription>
-                  Faça login para acessar o painel de controle
+                  Acesse o painel de controle da pousada
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="email">E-mail</Label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Mail className="h-5 w-5 text-gray-400" />
-                      </div>
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                       <Input
                         id="email"
                         type="email"
-                        placeholder="seu@email.com"
-                        className="pl-10"
+                        placeholder="admin@rioverde.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        className="pl-11"
                         required
                       />
                     </div>
                   </div>
+
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="password">Senha</Label>
-                    </div>
+                    <Label htmlFor="password">Senha</Label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Lock className="h-5 w-5 text-gray-400" />
-                      </div>
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
-                        className="pl-10 pr-10"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        className="pl-11 pr-11"
                         required
                       />
                       <button
                         type="button"
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
                         onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
-                        {showPassword ? (
-                          <EyeOff className="h-5 w-5 text-gray-400" />
-                        ) : (
-                          <Eye className="h-5 w-5 text-gray-400" />
-                        )}
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    size="lg"
+                    disabled={isLoading}
+                  >
                     {isLoading ? "Entrando..." : "Entrar"}
                   </Button>
+
+                  <p className="text-center text-sm text-muted-foreground">
+                    Credenciais de demonstração:<br />
+                    <code className="text-xs bg-muted px-2 py-1 rounded">admin@rioverde.com / admin123</code>
+                  </p>
                 </form>
               </CardContent>
             </Card>
@@ -141,4 +143,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default AdminLogin;
