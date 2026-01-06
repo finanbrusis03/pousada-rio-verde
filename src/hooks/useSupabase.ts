@@ -75,44 +75,58 @@ export const useRooms = () => {
 
   const updateRoom = async (id: string | number, updates: Partial<Room>) => {
     try {
-      console.log('Updating room:', id, updates)
+      console.log('Iniciando atualização do quarto ID:', id);
+      console.log('Dados recebidos para atualização:', updates);
       
-      // Verifica se o quarto existe antes de atualizar
+      // Verifica se o ID é válido
+      if (!id) {
+        throw new Error('ID do quarto não fornecido');
+      }
+
+      // Prepara os dados para atualização
+      const roomToUpdate: any = {
+        ...updates,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Garante que os campos numéricos sejam números
+      if (updates.price !== undefined) roomToUpdate.price = Number(updates.price) || 0;
+      if (updates.capacity !== undefined) roomToUpdate.capacity = Number(updates.capacity) || 1;
+      if (updates.min_nights !== undefined) roomToUpdate.min_nights = Number(updates.min_nights) || 1;
+
+      // Garante que os arrays sejam arrays
+      if (updates.images !== undefined) {
+        roomToUpdate.images = Array.isArray(updates.images) ? updates.images : [];
+      }
+      if (updates.amenities !== undefined) {
+        roomToUpdate.amenities = Array.isArray(updates.amenities) ? updates.amenities : [];
+      }
+      if (updates.features !== undefined) {
+        roomToUpdate.features = Array.isArray(updates.features) ? updates.features : [];
+      }
+
+      // Remove campos undefined
+      Object.keys(roomToUpdate).forEach(key => {
+        if (roomToUpdate[key] === undefined) {
+          delete roomToUpdate[key];
+        }
+      });
+
+      console.log('Enviando atualização para o Supabase:', roomToUpdate);
+
+      // Primeiro, verifica se o quarto existe
       const { data: existingRoom, error: fetchError } = await supabase
         .from('rooms')
         .select('*')
         .eq('id', id)
-        .single()
+        .single();
 
       if (fetchError || !existingRoom) {
-        console.error('Room not found:', id, fetchError)
-        throw new Error('Quarto não encontrado')
+        console.error('Quarto não encontrado:', id, fetchError);
+        throw new Error('Quarto não encontrado');
       }
 
-      // Prepara os dados para atualização
-      const roomToUpdate: Partial<Room> = {
-        ...updates,
-        updated_at: new Date().toISOString(),
-        // Garante que os arrays estejam corretos
-        images: Array.isArray(updates.images) ? updates.images : (existingRoom.images || []),
-        amenities: Array.isArray(updates.amenities) ? updates.amenities : (existingRoom.amenities || []),
-        features: Array.isArray(updates.features) ? updates.features : (existingRoom.features || []),
-        // Converte números para garantir o tipo correto
-        price: updates.price !== undefined ? Number(updates.price) : existingRoom.price,
-        capacity: updates.capacity !== undefined ? Number(updates.capacity) : existingRoom.capacity,
-        min_nights: updates.min_nights !== undefined ? Number(updates.min_nights) : existingRoom.min_nights,
-        status: updates.status || existingRoom.status || 'available'
-      };
-
-      // Remove campos undefined para evitar erros no Supabase
-      Object.keys(roomToUpdate).forEach(key => {
-        if (roomToUpdate[key as keyof Room] === undefined) {
-          delete roomToUpdate[key as keyof Room];
-        }
-      });
-
-      console.log('Sending update to Supabase:', roomToUpdate);
-
+      // Faz a atualização
       const { data, error } = await supabase
         .from('rooms')
         .update(roomToUpdate)
@@ -121,7 +135,7 @@ export const useRooms = () => {
         .single();
 
       if (error) {
-        console.error('Supabase update error:', error);
+        console.error('Erro ao atualizar no Supabase:', error);
         throw error;
       }
 
@@ -129,7 +143,7 @@ export const useRooms = () => {
         throw new Error('Nenhum dado retornado ao atualizar o quarto');
       }
 
-      console.log('Room updated successfully:', data);
+      console.log('Quarto atualizado com sucesso:', data);
       
       // Atualiza a lista de quartos
       await fetchRooms();
