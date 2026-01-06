@@ -11,8 +11,9 @@ export const useRooms = () => {
     fetchRooms()
   }, [])
 
-  const fetchRooms = async () => {
+  const fetchRooms = useCallback(async () => {
     try {
+      setLoading(true)
       const { data, error } = await supabase
         .from('rooms')
         .select('*')
@@ -20,23 +21,40 @@ export const useRooms = () => {
 
       if (error) {
         console.error('Error fetching rooms:', error)
-      } else {
-        setRooms(data || [])
+        throw error
       }
+      
+      const processedRooms = (data || []).map(room => ({
+        ...room,
+        images: Array.isArray(room.images) ? room.images : [],
+        amenities: Array.isArray(room.amenities) ? room.amenities : [],
+        features: Array.isArray(room.features) ? room.features : [],
+        status: room.status || 'available',
+        min_nights: room.min_nights || 1
+      }))
+      
+      setRooms(processedRooms)
+      return processedRooms
+    } catch (error) {
+      console.error('Error in fetchRooms:', error)
+      throw error
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const createRoom = async (roomData: Omit<Room, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      // Garante que as imagens sejam um array vazio se não fornecidas
+      // Garante que os dados estejam no formato correto
       const roomToCreate = {
         ...roomData,
         images: Array.isArray(roomData.images) ? roomData.images : [],
-        status: roomData.status || 'available',
         amenities: Array.isArray(roomData.amenities) ? roomData.amenities : [],
-        min_nights: roomData.min_nights || 1
+        features: Array.isArray(roomData.features) ? roomData.features : [],
+        status: roomData.status || 'available',
+        min_nights: roomData.min_nights || 1,
+        price: Number(roomData.price) || 0,
+        capacity: Number(roomData.capacity) || 1
       }
 
       const { data, error } = await supabase
@@ -55,7 +73,7 @@ export const useRooms = () => {
     }
   }
 
-  const updateRoom = async (id: string, updates: Partial<Room>) => {
+  const updateRoom = async (id: number, updates: Partial<Room>) => {
     try {
       console.log('Updating room:', id, updates)
       
@@ -71,8 +89,19 @@ export const useRooms = () => {
         throw new Error('Quarto não encontrado')
       }
 
-      // Atualiza apenas os campos fornecidos
-      const roomToUpdate = { ...updates, updated_at: new Date().toISOString() }
+      // Prepara os dados para atualização
+      const roomToUpdate = {
+        ...updates,
+        updated_at: new Date().toISOString(),
+        // Garante que os arrays estejam corretos
+        images: Array.isArray(updates.images) ? updates.images : existingRoom.images,
+        amenities: Array.isArray(updates.amenities) ? updates.amenities : existingRoom.amenities,
+        features: Array.isArray(updates.features) ? updates.features : existingRoom.features,
+        // Converte números para garantir o tipo correto
+        price: updates.price !== undefined ? Number(updates.price) : existingRoom.price,
+        capacity: updates.capacity !== undefined ? Number(updates.capacity) : existingRoom.capacity,
+        min_nights: updates.min_nights !== undefined ? Number(updates.min_nights) : existingRoom.min_nights
+      }
 
       const { data, error } = await supabase
         .from('rooms')
@@ -84,6 +113,7 @@ export const useRooms = () => {
       if (error) throw error
       if (!data) throw new Error('Nenhum dado retornado ao atualizar o quarto')
 
+      // Atualiza a lista de quartos
       await fetchRooms()
       return data
     } catch (error) {
@@ -92,7 +122,7 @@ export const useRooms = () => {
     }
   }
 
-  const deleteRoom = async (id: string) => {
+  const deleteRoom = async (id: number) => {
     try {
       // Primeiro, obtém o quarto para deletar as imagens
       const { data: room, error: fetchError } = await supabase
@@ -148,23 +178,28 @@ export const useRooms = () => {
     }
   }
 
-  const getRoom = async (id: string) => {
-    const { data, error } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('id', id)
-      .single()
+  const getRoom = async (id: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('id', id)
+        .single()
 
-    if (error) {
-      console.error('Error fetching room:', error)
-      throw new Error('Erro ao buscar o quarto')
+      if (error) throw error
+      if (!data) throw new Error('Quarto não encontrado')
+
+      // Processa os dados para garantir o formato correto
+      return {
+        ...data,
+        images: Array.isArray(data.images) ? data.images : [],
+        amenities: Array.isArray(data.amenities) ? data.amenities : [],
+        features: Array.isArray(data.features) ? data.features : []
+      }
+    } catch (error) {
+      console.error('Error getting room:', error)
+      throw error
     }
-
-    if (!data) {
-      throw new Error('Quarto não encontrado')
-    }
-
-    return processRoomImages(data)
   }
 
   const checkAvailability = async (
