@@ -81,66 +81,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string, role: 'client' | 'admin') => {
     try {
-      // Para admin, usar validação local primeiro
-      if (role === 'admin') {
-        if (email !== 'admin@rioverde.com') {
-          return { success: false, error: 'Credenciais de administrador inválidas' }
-        }
-        if (password !== 'admin123') {
-          return { success: false, error: 'Senha de administrador incorreta' }
-        }
+      // Tenta autenticar no Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password: password.trim()
+      });
 
-        // Criar usuário local para admin
-        const adminUser = {
-          id: 'admin-local',
-          email,
-          name: 'Administrador',
-          role: 'admin' as const
-        }
-        setUser(adminUser)
-        setSupabaseUser({
-          id: 'admin-local',
-          email,
-          user_metadata: { name: 'Administrador', role: 'admin' }
-        } as any)
-        
-        return { success: true }
+      if (error) {
+        throw error;
       }
 
-      // Para clientes, tentar Supabase primeiro
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        })
-
-        if (error) {
-          throw error
-        }
-
-        return { success: true }
-      } catch (supabaseError) {
-        console.log('Supabase auth failed, using local fallback:', supabaseError)
-        
-        // Fallback local para clientes
-        const clientUser = {
-          id: `client-${email}`,
-          email,
-          name: email.split('@')[0],
-          role: 'client' as const
-        }
-        setUser(clientUser)
-        setSupabaseUser({
-          id: clientUser.id,
-          email,
-          user_metadata: { name: clientUser.name, role: 'client' }
-        } as any)
-        
-        return { success: true }
+      // Verifica se é admin (se necessário)
+      if (role === 'admin' && email.toLowerCase() !== 'admin@rioverde.com') {
+        await supabase.auth.signOut();
+        return { success: false, error: 'Acesso restrito a administradores' };
       }
+
+      return { success: true };
     } catch (error) {
-      console.error('Sign in error:', error)
-      return { success: false, error: 'Erro ao fazer login' }
+      console.error('Erro ao fazer login:', error);
+      return { 
+        success: false, 
+        error: 'E-mail ou senha inválidos. Por favor, tente novamente.' 
+      };
     }
   }
 
