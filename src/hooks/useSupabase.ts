@@ -144,29 +144,33 @@ export const useRooms = () => {
       }
       
       // Busca o registro atualizado usando o operador de igualdade para UUID
-      const { data, error: fetchUpdatedError } = await supabase
+      const { data: updatedRoom, error: fetchUpdatedError } = await supabase
         .from('rooms')
         .select('*')
         .eq('id', roomId)
-        .maybeSingle();  // Usando maybeSingle para evitar erros quando não encontrar
+        .single();  // Usamos single() pois o registro deve existir após a atualização
         
       if (fetchUpdatedError) {
         console.error('Erro ao buscar quarto atualizado:', fetchUpdatedError);
+        // Mesmo com erro, tentamos atualizar a lista local
+        await fetchRooms();
         throw fetchUpdatedError;
       }
 
-      if (!data) {
+      if (!updatedRoom) {
         console.error('Nenhum dado retornado ao buscar o quarto atualizado');
+        // Mesmo sem dados, tentamos atualizar a lista local
+        await fetchRooms();
         throw new Error('Não foi possível confirmar a atualização do quarto');
       }
       
-      console.log('Quarto atualizado com sucesso:', data);
-
-      console.log('Quarto atualizado com sucesso:', data);
+      console.log('Quarto atualizado com sucesso:', updatedRoom);
       
-      // Atualiza a lista de quartos
+      // Atualiza a lista de quartos para refletir as mudanças
       await fetchRooms();
-      return data;
+      
+      // Retorna os dados atualizados do banco de dados
+      return updatedRoom;
     } catch (error) {
       console.error('Error updating room:', error);
       throw new Error(`Erro ao atualizar o quarto: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
