@@ -1,6 +1,16 @@
 import { supabase } from './supabase'
 
+interface UploadResponse {
+  path: string;
+  fullPath: string;
+  id: string;
+}
+
 export const uploadImage = async (file: File, folder = 'rooms'): Promise<string> => {
+  if (!file || !(file instanceof File)) {
+    throw new Error('Invalid file provided')
+  }
+
   try {
     // Gera um nome único para o arquivo
     const fileExt = file.name.split('.').pop()
@@ -14,9 +24,9 @@ export const uploadImage = async (file: File, folder = 'rooms'): Promise<string>
         upsert: false
       })
 
-    if (error) {
+    if (error || !data) {
       console.error('Error uploading image:', error)
-      throw error
+      throw error || new Error('Failed to upload image')
     }
 
     // Obtém a URL pública da imagem
@@ -24,17 +34,31 @@ export const uploadImage = async (file: File, folder = 'rooms'): Promise<string>
       .from('images')
       .getPublicUrl(data.path)
 
+    if (!publicUrl) {
+      throw new Error('Failed to get public URL for uploaded image')
+    }
+
     return publicUrl
   } catch (error) {
     console.error('Error in uploadImage:', error)
-    throw error
+    throw error instanceof Error ? error : new Error('Failed to upload image')
   }
 }
 
 export const deleteImage = async (url: string): Promise<boolean> => {
+  if (!url) {
+    console.warn('No URL provided for image deletion')
+    return false
+  }
+
   try {
     // Extrai o caminho do arquivo da URL
-    const path = url.split('/').slice(-2).join('/')
+    const urlParts = url.split('/')
+    if (urlParts.length < 2) {
+      throw new Error('Invalid image URL format')
+    }
+    
+    const path = urlParts.slice(-2).join('/')
     
     const { error } = await supabase.storage
       .from('images')
@@ -42,7 +66,7 @@ export const deleteImage = async (url: string): Promise<boolean> => {
 
     if (error) {
       console.error('Error deleting image:', error)
-      throw error
+      return false
     }
 
     return true
