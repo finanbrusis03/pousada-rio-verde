@@ -23,7 +23,7 @@ export interface Database {
     Tables: {
       rooms: {
         Row: {
-          id: number
+          id: string  // Alterado para string para suportar UUID
           name: string
           description: string
           capacity: number
@@ -39,7 +39,7 @@ export interface Database {
           updated_at: string
         }
         Insert: {
-          id?: number
+          id?: string  // Alterado para string para suportar UUID
           name: string
           description: string
           capacity: number

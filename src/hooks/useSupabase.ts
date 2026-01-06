@@ -73,7 +73,7 @@ export const useRooms = () => {
     }
   }
 
-  const updateRoom = async (id: string | number, updates: Partial<Room>) => {
+  const updateRoom = async (id: string, updates: Partial<Room>) => {
     try {
       console.log('Iniciando atualização do quarto ID:', id);
       console.log('Dados recebidos para atualização:', updates);
@@ -83,15 +83,18 @@ export const useRooms = () => {
         throw new Error('ID do quarto não fornecido');
       }
 
+      // Converte o ID para string para garantir consistência
+      const roomId = String(id);
+      
       // Primeiro, obtém o quarto existente
       const { data: existingRoom, error: fetchError } = await supabase
         .from('rooms')
         .select('*')
-        .eq('id', id)
+        .eq('id', roomId)
         .single();
 
       if (fetchError || !existingRoom) {
-        console.error('Quarto não encontrado:', id, fetchError);
+        console.error('Quarto não encontrado:', roomId, fetchError);
         throw new Error('Quarto não encontrado');
       }
 
@@ -124,7 +127,7 @@ export const useRooms = () => {
       const { data, error } = await supabase
         .from('rooms')
         .update(roomToUpdate)
-        .eq('id', id)
+        .eq('id', roomId)
         .select()
         .single();
 
