@@ -82,29 +82,35 @@ export const useRooms = () => {
         throw new Error('ID do quarto não fornecido');
       }
 
-      // Obtém a sessão atual
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        console.error('Nenhuma sessão ativa encontrada');
-        // Força o refresh da sessão
-        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
-        
-        if (refreshError || !refreshedSession) {
-          console.error('Erro ao atualizar a sessão:', refreshError);
-          throw new Error('Sessão expirada. Por favor, faça login novamente.');
-        }
-      }
-
       // Verifica se o usuário está autenticado
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
         console.error('Erro ao verificar autenticação:', userError);
-        throw new Error('Não foi possível verificar sua autenticação. Por favor, faça login novamente.');
+        
+        // Tenta obter a sessão atual
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          console.error('Nenhuma sessão ativa encontrada');
+          // Redireciona para a página de login
+          window.location.href = '/admin/login';
+          throw new Error('Sessão expirada. Por favor, faça login novamente.');
+        }
+        
+        // Se chegou aqui, temos uma sessão, mas getUser falhou
+        // Vamos tentar atualizar o token manualmente
+        const { data: { session: refreshedSession }, error: refreshError } = 
+          await supabase.auth.refreshSession();
+          
+        if (refreshError || !refreshedSession) {
+          console.error('Erro ao atualizar a sessão:', refreshError);
+          window.location.href = '/admin/login';
+          throw new Error('Sessão expirada. Por favor, faça login novamente.');
+        }
       }
 
-      console.log('Usuário autenticado:', user.email);
+      console.log('Usuário autenticado:', user?.email || 'Usuário não identificado');
       console.log('Iniciando atualização do quarto ID:', id);
       console.log('Dados recebidos para atualização:', updates);
       

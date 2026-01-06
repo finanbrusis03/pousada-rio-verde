@@ -13,16 +13,29 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false, // Desativa a detecção de sessão na URL
     flowType: 'pkce',
-    debug: true,
-    storageKey: 'pousada-rio-verde-auth-token',
-    storage: window.localStorage
+    debug: false, // Desativa logs detalhados em produção
+    storage: {
+      getItem: (key) => {
+        const item = localStorage.getItem(key);
+        console.log('Getting item:', key, item);
+        return item;
+      },
+      setItem: (key, value) => {
+        console.log('Setting item:', key, value);
+        localStorage.setItem(key, value);
+      },
+      removeItem: (key) => {
+        console.log('Removing item:', key);
+        localStorage.removeItem(key);
+      },
+    },
+    storageKey: 'supabase.auth.token', // Usa a chave padrão
   },
   global: {
     headers: {
-      'X-Client-Info': 'pousada-rio-verde/1.0.0',
-      'apikey': supabaseAnonKey
+      'X-Client-Info': 'pousada-rio-verde/1.0.0'
     },
   }
 });
@@ -30,6 +43,18 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
 // Adiciona um listener para mudanças de autenticação
 supabase.auth.onAuthStateChange((event, session) => {
   console.log('Auth state changed:', event, session);
+  
+  // Atualiza o localStorage manualmente para garantir consistência
+  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+    if (session) {
+      localStorage.setItem('supabase.auth.token', JSON.stringify({
+        currentSession: session,
+        expiresAt: session.expires_at
+      }));
+    }
+  } else if (event === 'SIGNED_OUT') {
+    localStorage.removeItem('supabase.auth.token');
+  }
 });
 
 // Database types
