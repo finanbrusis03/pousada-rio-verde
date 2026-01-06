@@ -30,22 +30,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Verificar sessão atual
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        console.log('Verificando sessão...')
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Erro ao obter sessão:', error)
+          return
+        }
         
         if (session?.user) {
+          console.log('Sessão encontrada:', session.user.email)
           setSupabaseUser(session.user)
           
-          // Obter a role do usuário dos metadados ou da coluna role
-          const userRole = session.user.role === 'admin' || 
+          // Obter a role do usuário de várias fontes possíveis
+          const isAdmin = session.user.role === 'admin' || 
+                         session.user.email === 'admin@rioverde.com' ||
                          session.user.user_metadata?.role === 'admin' ||
-                         session.user.app_metadata?.role === 'admin' ? 'admin' : 'client';
+                         session.user.app_metadata?.role === 'admin';
+          
+          console.log('Detalhes do usuário:', {
+            email: session.user.email,
+            role: session.user.role,
+            user_metadata: session.user.user_metadata,
+            app_metadata: session.user.app_metadata,
+            isAdmin
+          })
           
           setUser({
             id: session.user.id,
             email: session.user.email || '',
             name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
-            role: userRole
+            role: isAdmin ? 'admin' : 'client'
           })
+        } else {
+          console.log('Nenhuma sessão ativa encontrada')
+          setUser(null)
+          setSupabaseUser(null)
         }
       } catch (error) {
         console.error('Erro ao verificar sessão:', error)
@@ -54,23 +74,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Verificar sessão imediatamente
     checkSession()
 
     // Escutar mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email)
+        
         if (session?.user) {
+          console.log('Usuário autenticado:', session.user.email)
           setSupabaseUser(session.user)
           
-          const isAdminUser = session.user.email === 'admin@rioverde.com'
+          const isAdmin = session.user.role === 'admin' || 
+                         session.user.email === 'admin@rioverde.com' ||
+                         session.user.user_metadata?.role === 'admin' ||
+                         session.user.app_metadata?.role === 'admin';
           
           setUser({
             id: session.user.id,
             email: session.user.email || '',
             name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
-            role: isAdminUser ? 'admin' : 'client'
+            role: isAdmin ? 'admin' : 'client'
           })
+          
+          // Se acabou de fazer login, recarrega a página para garantir que tudo seja atualizado
+          if (event === 'SIGNED_IN') {
+            console.log('Login detectado, recarregando a página...')
+            setTimeout(() => window.location.reload(), 100)
+          }
         } else {
+          console.log('Usuário não autenticado')
           setUser(null)
           setSupabaseUser(null)
         }
@@ -78,7 +112,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      console.log('Removendo listener de autenticação')
+      subscription?.unsubscribe()
+    }
   }, [])
 
   const signIn = async (email: string, password: string, role: 'client' | 'admin') => {

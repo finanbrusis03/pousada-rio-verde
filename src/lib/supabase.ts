@@ -13,25 +13,38 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false, // Desativa a detecção de sessão na URL
+    detectSessionInUrl: true, // Ativa a detecção de sessão na URL
     flowType: 'pkce',
-    debug: false, // Desativa logs detalhados em produção
+    debug: true, // Ativa logs detalhados para depuração
     storage: {
       getItem: (key) => {
-        const item = localStorage.getItem(key);
-        console.log('Getting item:', key, item);
-        return item;
+        try {
+          const item = localStorage.getItem(key);
+          console.log('Getting item:', key, item);
+          return item;
+        } catch (error) {
+          console.error('Error getting item from localStorage:', error);
+          return null;
+        }
       },
       setItem: (key, value) => {
-        console.log('Setting item:', key, value);
-        localStorage.setItem(key, value);
+        try {
+          console.log('Setting item:', key, value);
+          localStorage.setItem(key, value);
+        } catch (error) {
+          console.error('Error setting item in localStorage:', error);
+        }
       },
       removeItem: (key) => {
-        console.log('Removing item:', key);
-        localStorage.removeItem(key);
+        try {
+          console.log('Removing item:', key);
+          localStorage.removeItem(key);
+        } catch (error) {
+          console.error('Error removing item from localStorage:', error);
+        }
       },
     },
-    storageKey: 'supabase.auth.token', // Usa a chave padrão
+    storageKey: 'sb-' + new URL(supabaseUrl).hostname + '-auth-token',
   },
   global: {
     headers: {
