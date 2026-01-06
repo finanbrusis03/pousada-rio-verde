@@ -14,7 +14,7 @@ import Policies from "@/pages/Policies";
 import Booking from "@/pages/Booking";
 import AuthPage from "@/pages/AuthPage";
 import ClientArea from "@/pages/ClientArea";
-import AdminLogin from "@/pages/AdminLogin";
+import Login from "@/pages/Login";
 import Admin from "@/pages/Admin";
 import { Layout } from "@/components/layout/Layout";
 import NotFound from "@/pages/NotFound";
@@ -50,12 +50,13 @@ function App() {
                 <Route path="/reservar" element={<Layout><Booking /></Layout>} />
                 
                 {/* Autenticação */}
-                <Route path="/login" element={<AuthPage />} />
-                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/area-do-cliente" element={<ClientArea />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/admin" element={<Admin />} />
                 
                 {/* Áreas Protegidas */}
                 <Route path="/minhas-reservas" element={<Layout><ClientArea /></Layout>} />
-                <Route path="/admin" element={<Admin />} />
                 
                 {/* Página não encontrada */}
                 <Route path="*" element={<Layout><NotFound /></Layout>} />
