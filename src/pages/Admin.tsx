@@ -44,7 +44,7 @@ const Admin = () => {
   useEffect(() => {
     // Verificar se usuário está autenticado e é admin
     if (!user || !isAdmin) {
-      navigate("/admin/login");
+      navigate("/login", { state: { admin: true } });
     }
   }, [user, isAdmin, navigate]);
 
