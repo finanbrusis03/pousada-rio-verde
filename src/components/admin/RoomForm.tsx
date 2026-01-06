@@ -138,14 +138,31 @@ export function RoomForm({ room, onSave, onCancel, isOpen }: RoomFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Prepare room data without complex image handling for now
-    const roomData = {
-      ...formData,
-      // Use existing images or default
-      images: formData.images.length > 0 ? formData.images : ['/placeholder.svg']
+    try {
+      // Prepara os dados do quarto garantindo os tipos corretos
+      const roomData = {
+        ...formData,
+        // Garante que os valores numéricos sejam números
+        capacity: Number(formData.capacity) || 2,
+        price: Number(formData.price) || 0,
+        min_nights: Number(formData.min_nights) || 1,
+        // Garante que os arrays estejam sempre definidos
+        amenities: Array.isArray(formData.amenities) ? formData.amenities : [],
+        images: Array.isArray(formData.images) && formData.images.length > 0 
+          ? formData.images 
+          : ['/placeholder.svg'],
+        // Garante que o status seja um dos valores permitidos
+        status: ['available', 'occupied', 'maintenance'].includes(formData.status) 
+          ? formData.status 
+          : 'available' as const
+      }
+      
+      console.log('Saving room data:', roomData);
+      onSave(roomData);
+    } catch (error) {
+      console.error('Error preparing room data:', error);
+      throw error;
     }
-    
-    onSave(roomData)
   }
 
   const resetForm = () => {

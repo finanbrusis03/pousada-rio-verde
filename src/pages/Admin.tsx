@@ -71,7 +71,12 @@ const Admin = () => {
     try {
       if (editingRoom) {
         console.log('Editing room with ID:', editingRoom.id)
-        await roomsData.updateRoom(editingRoom.id, roomData);
+        // Garante que o ID seja tratado como número
+        const roomId = Number(editingRoom.id);
+        if (isNaN(roomId)) {
+          throw new Error('ID do quarto inválido');
+        }
+        await roomsData.updateRoom(roomId, roomData);
         toast({
           title: "Quarto atualizado",
           description: "O quarto foi atualizado com sucesso.",
@@ -96,11 +101,16 @@ const Admin = () => {
     }
   };
 
-  const handleDeleteRoom = async (roomId: string) => {
+  const handleDeleteRoom = async (roomId: number | string) => {
     if (confirm('Tem certeza que deseja excluir este quarto?')) {
       try {
-        console.log('Deleting room with ID:', roomId)
-        await roomsData.deleteRoom(roomId);
+        console.log('Deleting room with ID:', roomId);
+        // Garante que o ID seja tratado como número
+        const id = typeof roomId === 'string' ? parseInt(roomId, 10) : roomId;
+        if (isNaN(id)) {
+          throw new Error('ID do quarto inválido');
+        }
+        await roomsData.deleteRoom(id);
         toast({
           title: "Quarto excluído",
           description: "O quarto foi excluído com sucesso.",
