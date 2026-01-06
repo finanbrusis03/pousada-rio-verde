@@ -73,7 +73,7 @@ export const useRooms = () => {
     }
   }
 
-  const updateRoom = async (id: string, updates: Partial<Room>) => {
+  const updateRoom = async (id: string, updates: Partial<Omit<Room, 'id' | 'created_at' | 'updated_at'>>) => {
     try {
       console.log('Iniciando atualização do quarto ID:', id);
       console.log('Dados recebidos para atualização:', updates);
@@ -86,17 +86,21 @@ export const useRooms = () => {
       // Converte o ID para string para garantir consistência
       const roomId = String(id);
       
-      // Primeiro, obtém o quarto existente
-      const { data: existingRoom, error: fetchError } = await supabase
+      console.log('Buscando quarto com ID:', roomId);
+      
+      // Primeiro, obtém o quarto existente usando o operador de igualdade para UUID
+      const { data: existingRooms, error: fetchError } = await supabase
         .from('rooms')
         .select('*')
-        .eq('id', roomId)
-        .single();
+        .eq('id', roomId);
 
-      if (fetchError || !existingRoom) {
-        console.error('Quarto não encontrado:', roomId, fetchError);
-        throw new Error('Quarto não encontrado');
+      if (fetchError || !existingRooms || existingRooms.length === 0) {
+        console.error('Quarto não encontrado. ID:', roomId, 'Erro:', fetchError);
+        throw new Error(`Quarto não encontrado com o ID: ${roomId}`);
       }
+      
+      const existingRoom = existingRooms[0];
+      console.log('Quarto encontrado:', existingRoom);
 
       // Prepara os dados para atualização, mantendo os valores existentes para campos não fornecidos
       const roomToUpdate: any = {
@@ -123,22 +127,40 @@ export const useRooms = () => {
 
       console.log('Dados que serão enviados para atualização:', JSON.stringify(roomToUpdate, null, 2));
 
-      // Faz a atualização
-      const { data, error } = await supabase
+      console.log('Enviando atualização para o quarto ID:', roomId);
+      console.log('Dados da atualização:', roomToUpdate);
+      
+      console.log('Tentando atualizar quarto com ID (tipo):', roomId, typeof roomId);
+      
+      // Faz o update usando o operador de igualdade para UUID
+      const { error: updateError } = await supabase
         .from('rooms')
         .update(roomToUpdate)
+        .eq('id', roomId);
+        
+      if (updateError) {
+        console.error('Erro na operação de update:', updateError);
+        throw updateError;
+      }
+      
+      // Busca o registro atualizado usando o operador de igualdade para UUID
+      const { data, error: fetchUpdatedError } = await supabase
+        .from('rooms')
+        .select('*')
         .eq('id', roomId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Erro ao atualizar no Supabase:', error);
-        throw error;
+        .maybeSingle();  // Usando maybeSingle para evitar erros quando não encontrar
+        
+      if (fetchUpdatedError) {
+        console.error('Erro ao buscar quarto atualizado:', fetchUpdatedError);
+        throw fetchUpdatedError;
       }
 
       if (!data) {
-        throw new Error('Nenhum dado retornado ao atualizar o quarto');
+        console.error('Nenhum dado retornado ao buscar o quarto atualizado');
+        throw new Error('Não foi possível confirmar a atualização do quarto');
       }
+      
+      console.log('Quarto atualizado com sucesso:', data);
 
       console.log('Quarto atualizado com sucesso:', data);
       
