@@ -14,10 +14,23 @@ export const useRooms = () => {
   const fetchRooms = useCallback(async () => {
     try {
       setLoading(true)
+      
+      // Obter a sessão atual
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session) {
+        console.error('Erro ao obter sessão:', sessionError)
+        // Redireciona para o login se não houver sessão
+        window.location.href = '/login?redirect=/admin'
+        return []
+      }
+      
+      // Fazer a requisição com o token de acesso
       const { data, error } = await supabase
         .from('rooms')
         .select('*')
         .order('name')
+        .select()
 
       if (error) {
         console.error('Error fetching rooms:', error)

@@ -8,50 +8,62 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.')
 }
 
-// Criação do cliente Supabase com tipagem forte
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true, // Ativa a detecção de sessão na URL
-    flowType: 'pkce',
-    debug: true, // Ativa logs detalhados para depuração
-    storage: {
-      getItem: (key) => {
-        try {
-          const item = localStorage.getItem(key);
-          console.log('Getting item:', key, item);
-          return item;
-        } catch (error) {
-          console.error('Error getting item from localStorage:', error);
-          return null;
-        }
+// Função para criar um cliente Supabase com configuração personalizada
+const createSupabaseClient = () => {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce',
+      debug: true,
+      storage: {
+        getItem: (key) => {
+          try {
+            if (typeof window !== 'undefined') {
+              const item = localStorage.getItem(key);
+              console.log('Getting item:', key, item);
+              return item;
+            }
+            return null;
+          } catch (error) {
+            console.error('Error getting item from localStorage:', error);
+            return null;
+          }
+        },
+        setItem: (key, value) => {
+          try {
+            if (typeof window !== 'undefined') {
+              console.log('Setting item:', key, value);
+              localStorage.setItem(key, value);
+            }
+          } catch (error) {
+            console.error('Error setting item in localStorage:', error);
+          }
+        },
+        removeItem: (key) => {
+          try {
+            if (typeof window !== 'undefined') {
+              console.log('Removing item:', key);
+              localStorage.removeItem(key);
+            }
+          } catch (error) {
+            console.error('Error removing item from localStorage:', error);
+          }
+        },
       },
-      setItem: (key, value) => {
-        try {
-          console.log('Setting item:', key, value);
-          localStorage.setItem(key, value);
-        } catch (error) {
-          console.error('Error setting item in localStorage:', error);
-        }
-      },
-      removeItem: (key) => {
-        try {
-          console.log('Removing item:', key);
-          localStorage.removeItem(key);
-        } catch (error) {
-          console.error('Error removing item from localStorage:', error);
-        }
-      },
+      storageKey: 'sb-auth-token'
     },
-    storageKey: 'sb-' + new URL(supabaseUrl).hostname + '-auth-token',
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'pousada-rio-verde/1.0.0'
-    },
-  }
-});
+    global: {
+      headers: {
+        'X-Client-Info': 'pousada-rio-verde/1.0.0'
+      },
+    }
+  });
+};
+
+// Criação do cliente Supabase
+export const supabase = createSupabaseClient();
 
 // Adiciona um listener para mudanças de autenticação
 supabase.auth.onAuthStateChange((event, session) => {

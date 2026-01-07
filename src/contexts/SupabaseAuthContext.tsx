@@ -115,40 +115,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const signIn = async (email: string, password: string, role: 'client' | 'admin') => {
+  const signIn = async (email: string, password: string, role: 'client' | 'admin' = 'client') => {
     try {
-      // Tenta autenticar no Supabase
+      setLoading(true)
+      console.log('Iniciando login para:', email, 'como', role)
+      
+      // Fazer login no Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.toLowerCase().trim(),
-        password: password.trim()
-      });
+        email,
+        password,
+      })
 
       if (error) {
-        throw error;
+        console.error('Erro no login:', error)
+        return { success: false, error: error.message }
       }
 
-      // Verifica a role do usuário autenticado
-      const user = data.user;
-      const isAdmin = user.role === 'admin' || 
-                     user.user_metadata?.role === 'admin' ||
-                     user.app_metadata?.role === 'admin';
-
-      // Se tentando acessar como admin, verifica se tem permissão
-      if (role === 'admin' && !isAdmin) {
-        await supabase.auth.signOut();
-        return { 
-          success: false, 
-          error: 'Acesso restrito a administradores' 
-        };
+      if (!data.user) {
+        return { success: false, error: 'Usuário não encontrado' }
       }
 
-      return { success: true };
+      // Obter o perfil completo do usuário
+      const { data: userData, error: userError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single()
+
+      console.log('Dados do perfil:', userData)
+
+      // Verificar se o usuário tem permissão para acessar a área solicitada
+      const isAdminUser = data.user.email === 'criszimn@rioverde.com' || 
+                         data.user.email === 'admin@rioverde.com' ||
+                         data.user.user_metadata?.role === 'admin' ||
+                         data.user.app_metadata?.role === 'admin' ||
+                         userData?.role === 'admin';
+
+      console.log('É admin?', isAdminUser, {
+        email: data.user.email,
+        user_metadata: data.user.user_metadata,
+        app_metadata: data.user.app_metadata,
+        profile_role: userData?.role
+      })
+
+      if (role === 'admin' && !isAdminUser) {
+        console.log('Acesso negado: usuário não é administrador')
+        await supabase.auth.signOut()
+        return { success: false, error: 'Acesso restrito a administradores' }
+      }
+
+      // Atualizar o estado do usuário com o tipo correto para a role
+      const userRole: 'admin' | 'client' = isAdminUser ? 'admin' : 'client';
+      const userInfo: User = {
+        id: data.user.id,
+        email: data.user.email || '',
+        name: data.user.user_metadata?.name || userData?.name || data.user.email?.split('@')[0] || 'Usuário',
+        role: userRole
+      }
+      
+      console.log('Usuário autenticado:', userInfo)
+      setUser(userInfo)
+
+      // Forçar atualização do token JWT com as claims corretas
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        await supabase.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token
+        })
+      }
+
+      return { success: true }
     } catch (error) {
-      console.error('Erro ao fazer login:', error);
-      return { 
-        success: false, 
-        error: 'E-mail ou senha inválidos. Por favor, tente novamente.' 
-      };
+      console.error('Erro no login:', error)
+      return { success: false, error: 'Erro ao fazer login' }
+    } finally {
+      setLoading(false)
     }
   }
 

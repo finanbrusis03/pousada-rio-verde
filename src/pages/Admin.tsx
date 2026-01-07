@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/lib/supabase";
 import { 
   Bed, 
   Calendar, 
@@ -42,41 +43,84 @@ const Admin = () => {
   const [editingRoom, setEditingRoom] = useState<any>(null);
 
   useEffect(() => {
-    console.log('Verificando autenticação:', { user, isAdmin });
-    
-    // Se não há usuário, redireciona para o login
-    if (!user) {
-      console.log('Usuário não autenticado, redirecionando para login...');
-      // Usa replace em vez de navigate para evitar adicionar ao histórico de navegação
-      navigate("/login", { 
-        state: { admin: true },
-        replace: true // Importante para evitar loops
-      });
-      return;
-    }
-    
-    // Se o usuário existe mas não é admin
-    if (!isAdmin) {
-      console.log('Usuário não é admin, redirecionando para login...');
-      console.log('Detalhes do usuário:', {
-        email: user.email,
-        role: user.role,
-        isAdmin: user.role === 'admin'
-      });
+    const checkAuth = async () => {
+      console.log('Verificando autenticação:', { user, isAdmin });
       
-      // Faz logout para limpar qualquer estado inválido
-      signOut().then(() => {
+      // Se não há usuário, verificar se há uma sessão ativa
+      if (!user) {
+        console.log('Nenhum usuário no estado, verificando sessão...');
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          console.log('Nenhuma sessão ativa, redirecionando para login...');
+          navigate("/login", { 
+            state: { admin: true },
+            replace: true
+          });
+          return;
+        }
+        
+        // Se há sessão mas não há usuário no estado, aguardar um pouco
+        console.log('Sessão encontrada, aguardando atualização do estado...');
+        return;
+      }
+      
+      // Se o usuário existe mas não é admin
+      if (!isAdmin) {
+        console.log('Usuário não é admin, redirecionando para login...');
+        console.log('Detalhes do usuário:', {
+          email: user.email,
+          role: user.role,
+          isAdmin: user.role === 'admin'
+        });
+        
+        // Faz logout para limpar qualquer estado inválido
+        await signOut();
         navigate("/login", { 
           state: { admin: true },
           replace: true
         });
-      });
-      return;
-    }
+        return;
+      }
+      
+      // Se chegou aqui, o usuário está autenticado e é admin
+      console.log('Usuário autenticado como admin:', user.email);
+      
+      // Forçar atualização da lista de quartos
+      if (roomsData.rooms.length === 0) {
+        console.log('Carregando lista de quartos...');
+        await roomsData.fetchRooms();
+      }
+    };
     
-    // Se chegou aqui, o usuário está autenticado e é admin
-    console.log('Usuário autenticado como admin:', user.email);
-  }, [user, isAdmin, navigate]);
+    checkAuth();
+    
+    // Configurar um listener para mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        console.log('Usuário deslogado, redirecionando para login...');
+        navigate("/login", { 
+          state: { admin: true },
+          replace: true
+        });
+      } else if (event === 'SIGNED_IN' && session) {
+        console.log('Sessão ativa, verificando permissões...');
+        const isAdminUser = session.user.email === 'criszimn@rioverde.com' || 
+                          session.user.email === 'admin@rioverde.com' ||
+                          session.user.user_metadata?.role === 'admin' ||
+                          session.user.app_metadata?.role === 'admin';
+        
+        if (!isAdminUser) {
+          console.log('Usuário não tem permissão de admin, fazendo logout...');
+          await supabase.auth.signOut();
+        }
+      }
+    });
+    
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, [user, isAdmin, navigate, signOut, roomsData]);
 
   const handleLogout = async () => {
     await signOut()
